@@ -1,0 +1,29 @@
+package com.dms.thread;
+
+import com.dms.model.Document;
+import com.dms.db.DBManager;
+
+public class AutoSaveTask implements Runnable {
+
+    private Document document;
+
+    public AutoSaveTask(Document document) {
+        this.document = document;
+    }
+
+    @Override
+    public void run() {
+        try {
+            while (true) {
+                Thread.sleep(10000); // autosave every 10 seconds
+                DBManager.saveDocumentMeta(document.getDocId(),
+                        document.getTitle(),
+                        document.getAuthor(),
+                        document.getContent());
+                System.out.println("Auto-saved document: " + document.getTitle());
+            }
+        } catch (InterruptedException e) {
+            System.out.println("AutoSave stopped for: " + document.getTitle());
+        }
+    }
+}
