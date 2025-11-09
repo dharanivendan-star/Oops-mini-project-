@@ -1,0 +1,42 @@
+package dms.admin;
+import dms.dao.DocumentDAO;
+import dms.util.DBUtil;
+import java.sql.*;
+import java.util.*;
+
+public class AdminService {
+    private DocumentDAO dao = new DocumentDAO();
+
+    public List<Map<String,Object>> searchDocuments(String q) throws SQLException {
+        return dao.searchDocs(q);
+    }
+
+    public boolean deleteDocument(int docId, int adminUserId) throws SQLException {
+        String sql = "DELETE FROM document_versions WHERE document_id = ?; DELETE FROM documents WHERE id = ?";
+        try (Connection c = DBUtil.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps1 = c.prepareStatement("DELETE FROM document_versions WHERE document_id = ?")) {
+                ps1.setInt(1, docId);
+                ps1.executeUpdate();
+            }
+            try (PreparedStatement ps2 = c.prepareStatement("DELETE FROM documents WHERE id = ?")) {
+                ps2.setInt(1, docId);
+                ps2.executeUpdate();
+            }
+            // add audit
+            try (PreparedStatement ps3 = c.prepareStatement("INSERT INTO audits(user_id,action,target_type,target_id,details) VALUES(?,?,?,?,?)")) {
+                ps3.setInt(1, adminUserId);
+                ps3.setString(2, "DELETE_DOCUMENT");
+                ps3.setString(3, "DOCUMENT");
+                ps3.setInt(4, docId);
+                ps3.setString(5, "Admin deleted document id " + docId);
+                ps3.executeUpdate();
+            }
+            c.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+}
