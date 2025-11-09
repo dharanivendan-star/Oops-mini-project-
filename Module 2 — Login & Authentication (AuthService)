@@ -1,0 +1,22 @@
+package dms.service;
+import dms.dao.UserDAO;
+import dms.dao.UserDAO.User;
+import org.mindrot.jbcrypt.BCrypt;
+
+public class AuthService {
+    private UserDAO userDAO = new UserDAO();
+
+    // Register (hash password)
+    public int register(String username, String plainPassword, String fullName) throws Exception {
+        String hashed = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+        return userDAO.createUser(username, hashed, fullName, "USER");
+    }
+
+    // Login
+    public User login(String username, String plainPassword) throws Exception {
+        User u = userDAO.findByUsername(username);
+        if (u == null) return null;
+        if (BCrypt.checkpw(plainPassword, u.passwordHash)) return u;
+        return null;
+    }
+}
