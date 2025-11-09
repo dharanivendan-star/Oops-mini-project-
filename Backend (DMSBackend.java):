@@ -1,0 +1,76 @@
+package com.dms.db;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/**
+ * DatabaseConnector Class
+ * ------------------------
+ * Handles MySQL connection setup for the Document Management System.
+ * Make sure the MySQL server is running and the database is created
+ * before connecting.
+ * Database: dmsdb
+ * Table: documents (doc_id, title, author, content)
+ */
+public class DatabaseConnector {
+
+    // JDBC Connection URL (edit this to match your local setup)
+    private static final String URL = "jdbc:mysql://localhost:3306/dmsdb";
+    private static final String USER = "root";               // your MySQL username
+    private static final String PASSWORD = "your_password";  // your MySQL password
+
+    /**
+     * Establishes and returns a connection to the MySQL database.
+     * @return Connection object to interact with the database
+     * @throws SQLException if a database access error occurs
+     */
+    public static Connection connect() throws SQLException {
+        Connection connection = null;
+        try {
+            // Load MySQL JDBC Driver
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            // Establish the connection
+            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            System.out.println("✅ Database connected successfully!");
+
+        } catch (ClassNotFoundException e) {
+            System.out.println("❌ MySQL JDBC Driver not found. Please add the connector JAR file to your project.");
+            e.printStackTrace();
+
+        } catch (SQLException e) {
+            System.out.println("❌ Database connection failed. Check URL, username, or password.");
+            throw e;
+        }
+
+        return connection;
+    }
+
+    /**
+     * Closes the provided database connection safely.
+     * @param connection Connection object to close
+     */
+    public static void close(Connection connection) {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                System.out.println("🔒 Database connection closed.");
+            }
+        } catch (SQLException e) {
+            System.out.println("⚠️ Error closing database connection.");
+            e.printStackTrace();
+        }
+    }
+
+    // Optional: Quick connection test
+    public static void main(String[] args) {
+        try (Connection conn = DatabaseConnector.connect()) {
+            if (conn != null) {
+                System.out.println("✅ Connection Test Successful!");
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Connection Test Failed: " + e.getMessage());
+        }
+    }
+}
