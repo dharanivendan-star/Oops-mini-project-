@@ -1,0 +1,86 @@
+package dms.dao;
+import dms.util.DBUtil;
+import java.sql.*;
+import java.util.*;
+
+public class DocumentDAO {
+
+    // create new document metadata and initial version
+    public int createDocument(int ownerId, String title, String description, String visibility) throws SQLException {
+        String sql = "INSERT INTO documents(owner_id,title,description,visibility) VALUES(?,?,?,?)";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, ownerId);
+            ps.setString(2, title);
+            ps.setString(3, description);
+            ps.setString(4, visibility);
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        }
+        return -1;
+    }
+
+    public int addVersion(int documentId, String fileName, String diskPath, long size, int uploadedBy) throws SQLException {
+        // compute next version no
+        int next = 1;
+        String vsql = "SELECT COALESCE(MAX(version_no),0) as maxv FROM document_versions WHERE document_id=?";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement vps = c.prepareStatement(vsql)) {
+            vps.setInt(1, documentId);
+            try (ResultSet rs = vps.executeQuery()) {
+                if (rs.next()) next = rs.getInt("maxv") + 1;
+            }
+        }
+        String sql = "INSERT INTO document_versions(document_id,file_name,disk_path,file_size,uploaded_by,version_no) VALUES(?,?,?,?,?,?)";
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, documentId);
+            ps.setString(2, fileName);
+            ps.setString(3, diskPath);
+            ps.setLong(4, size);
+            ps.setInt(5, uploadedBy);
+            ps.setInt(6, next);
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    int vid = rs.getInt(1);
+                    // update current_version on documents
+                    try (PreparedStatement ups = c.prepareStatement("UPDATE documents SET current_version_id=? WHERE id=?")) {
+                        ups.setInt(1, vid);
+                        ups.setInt(2, documentId);
+                        ups.executeUpdate();
+                    }
+                    return vid;
+                }
+            }
+        }
+        return -1;
+    }
+
+    // simple search by title (for Module 4)
+    public List<Map<String,Object>> searchDocs(String q) throws SQLException {
+        String sql = "SELECT d.id, d.title, d.description, u.username AS owner, v.file_name, v.version_no, v.uploaded_at "
+                   + "FROM documents d LEFT JOIN users u ON d.owner_id=u.id "
+                   + "LEFT JOIN document_versions v ON d.current_version_id = v.id "
+                   + "WHERE d.title LIKE ?";
+        List<Map<String,Object>> out = new ArrayList<>();
+        try (Connection c = DBUtil.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, "%" + q + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String,Object> m = new HashMap<>();
+                    m.put("id", rs.getInt("id"));
+                    m.put("title", rs.getString("title"));
+                    m.put("owner", rs.getString("owner"));
+                    m.put("file_name", rs.getString("file_name"));
+                    m.put("version", rs.getInt("version_no"));
+                    out.add(m);
+                }
+            }
+        }
+        return out;
+    }
+}
