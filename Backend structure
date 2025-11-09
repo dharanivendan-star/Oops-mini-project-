@@ -1,0 +1,15 @@
+src/
+└── dms/
+    ├── util/
+    │   └── DBUtil.java
+    ├── model/
+    │   ├── User.java
+    │   └── Document.java
+    ├── dao/
+    │   ├── UserDAO.java
+    │   └── DocumentDAO.java
+    ├── service/
+    │   ├── AuthService.java
+    │   ├── DocumentService.java
+    │   └── AdminService.java
+    └── TestConnection.java
